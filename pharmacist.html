@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MediFlow – Pharmacist Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p1:#C4B5FD; --p2:#A78BFA; --p3:#7C3AED;
+            --p4:#6D28D9; --p5:#5B21B6; --error:#E63946;
+            --success:#2D6A4F; --white:#FFFFFF; --bg:#F8F5FF;
+            --c1:#A5E6E2; --c3:#36B8B7; --c4:#0A858C; --c5:#0B757B;
+        }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+        body,html{height:100%;width:100%;font-family:'Plus Jakarta Sans',sans-serif;background:#EDE9FE;display:flex;justify-content:center;align-items:center;overflow:hidden;}
+
+        #app-frame{width:100%;height:100%;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column;}
+        @media(min-width:768px){#app-frame{width:420px;height:900px;border-radius:40px;box-shadow:0 40px 80px rgba(91,33,182,0.25);border:8px solid #333;}}
+
+        /* LOADER */
+        #loader{position:absolute;inset:0;background:var(--p5);z-index:9999;display:flex;justify-content:center;align-items:center;flex-direction:column;color:white;transition:opacity 0.5s;}
+        #loader.hidden{opacity:0;pointer-events:none;}
+        .pill-icon{font-size:52px;color:var(--p1);animation:pulse 1.2s ease-in-out infinite;}
+        @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+        #loader p{margin-top:16px;font-size:14px;font-weight:700;letter-spacing:3px;color:var(--p1);}
+
+        /* SCREEN SYSTEM */
+        .screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);z-index:10;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);}
+        .screen.hidden{transform:translateY(100%);pointer-events:none;}
+
+        /* TOP BAR */
+        .top-bar{padding:16px 20px 10px;background:var(--p5);color:white;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+        .top-bar h2{font-size:18px;font-weight:800;flex:1;}
+        .top-bar .back-btn{width:36px;height:36px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+        .top-bar .avatar{width:38px;height:38px;background:var(--p1);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--p5);font-weight:800;font-size:16px;flex-shrink:0;}
+
+        /* SCROLLABLE BODY */
+        .scroll-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+        .scroll-body::-webkit-scrollbar{display:none;}
+
+        /* AUTH */
+        .auth-bg{background:linear-gradient(160deg,var(--p5) 0%,var(--p4) 45%,var(--p3) 100%);}
+        .auth-card{background:white;border-radius:32px;padding:30px 24px;margin:auto;width:calc(100% - 40px);box-shadow:0 20px 50px rgba(0,0,0,0.15);}
+        .auth-card h1{font-size:24px;font-weight:800;color:var(--p5);margin-bottom:4px;}
+        .auth-card p{font-size:14px;color:#888;margin-bottom:24px;}
+        .auth-field{width:100%;height:54px;border:2px solid #E0E0E0;border-radius:16px;padding:0 18px;font-size:16px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;transition:border 0.3s;}
+        .auth-field:focus{border-color:var(--p3);}
+        .auth-field.err{border-color:var(--error);}
+        .lbl{font-size:13px;font-weight:700;color:#555;margin-bottom:8px;margin-top:16px;}
+        .auth-btn{width:100%;height:56px;background:var(--p5);color:white;border:none;border-radius:18px;font-size:17px;font-weight:800;margin-top:22px;cursor:pointer;box-shadow:0 10px 25px rgba(91,33,182,0.3);transition:transform 0.15s;}
+        .auth-btn:active{transform:scale(0.97);}
+        .err-hint{font-size:12px;color:var(--error);margin-top:4px;display:none;}
+        .err-hint.show{display:block;}
+        .auth-logo{display:flex;justify-content:center;margin-bottom:30px;margin-top:60px;}
+        .auth-logo span{font-size:30px;font-weight:800;color:white;letter-spacing:2px;}
+        .auth-logo i{color:var(--p1);margin-right:10px;}
+
+        /* DASHBOARD STATS */
+        .section-title{font-size:13px;font-weight:800;color:var(--p4);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+        .stat-row{display:flex;gap:12px;margin-bottom:20px;}
+        .stat-card{flex:1;background:white;border-radius:20px;padding:16px;box-shadow:0 4px 15px rgba(91,33,182,0.08);text-align:center;}
+        .stat-card i{font-size:26px;color:var(--p3);margin-bottom:8px;}
+        .stat-card .stat-num{font-size:28px;font-weight:800;color:var(--p5);}
+        .stat-card .stat-lbl{font-size:11px;color:#888;font-weight:600;margin-top:2px;}
+
+        /* RX QUEUE CARDS */
+        .rx-card{background:white;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 15px rgba(91,33,182,0.07);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;}
+        .rx-card:active{transform:scale(0.98);box-shadow:0 2px 8px rgba(91,33,182,0.1);}
+        .rx-card-top{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+        .rx-avatar{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--p2),var(--p3));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:18px;flex-shrink:0;}
+        .rx-info{flex:1;}
+        .rx-info h4{font-size:16px;font-weight:700;color:#222;}
+        .rx-info p{font-size:12px;color:#888;margin-top:2px;}
+        .rx-meta{display:flex;gap:8px;flex-wrap:wrap;}
+        .rx-meta-item{background:#F3F0FF;color:var(--p4);padding:4px 10px;border-radius:10px;font-size:11px;font-weight:700;}
+
+        /* STATUS BADGES */
+        .status-badge{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
+        .status-pending{background:#FFF3CD;color:#856404;}
+        .status-sent{background:#D1ECF1;color:#0C5460;}
+        .status-dispensed{background:#D4EDDA;color:var(--success);}
+        .status-verified{background:#E8D5FF;color:var(--p4);}
+
+        /* DETAIL SCREEN */
+        .detail-section{background:white;border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:0 4px 15px rgba(91,33,182,0.07);}
+        .detail-section h3{font-size:14px;font-weight:800;color:var(--p5);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+        .detail-section h3 i{color:var(--p3);}
+        .info-row{display:flex;justify-content:space-between;margin-bottom:8px;}
+        .info-row span:first-child{font-size:13px;color:#888;}
+        .info-row span:last-child{font-size:13px;font-weight:700;color:#333;}
+
+        /* MEDICINE LIST */
+        .med-item{background:#F8F5FF;border:1.5px solid var(--p1);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;}
+        .med-num{width:28px;height:28px;background:var(--p4);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+        .med-detail h4{font-size:14px;font-weight:700;color:#222;margin-bottom:4px;}
+        .med-detail p{font-size:12px;color:#666;line-height:1.5;}
+        .med-check{margin-left:auto;flex-shrink:0;}
+        .med-check input[type="checkbox"]{width:20px;height:20px;accent-color:var(--p3);cursor:pointer;}
+
+        /* ACTION BUTTONS */
+        .primary-btn{width:100%;height:56px;background:var(--p5);color:white;border:none;border-radius:18px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 10px 25px rgba(91,33,182,0.3);transition:transform 0.15s;}
+        .primary-btn:active{transform:scale(0.97);}
+        .primary-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+        .secondary-btn{width:100%;height:50px;background:white;color:var(--p5);border:2px solid var(--p3);border-radius:18px;font-size:15px;font-weight:700;cursor:pointer;margin-top:12px;transition:background 0.2s;}
+        .secondary-btn:active{background:var(--bg);}
+        .action-row{padding:16px 20px;background:white;border-top:1px solid #F0F0F0;flex-shrink:0;display:flex;gap:10px;}
+
+        /* NOTIFICATIONS */
+        .toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:#222;color:white;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:600;z-index:9999;white-space:nowrap;opacity:0;transition:opacity 0.3s;}
+        .toast.show{opacity:1;}
+
+        /* BOTTOM NAV */
+        .bottom-nav{background:var(--p5);display:flex;justify-content:space-around;align-items:center;padding:8px 0 12px;flex-shrink:0;}
+        .nav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;color:rgba(255,255,255,0.5);cursor:pointer;padding:6px 16px;border-radius:14px;transition:all 0.2s;}
+        .nav-btn i{font-size:20px;}
+        .nav-btn span{font-size:10px;font-weight:700;}
+        .nav-btn.active{color:white;background:rgba(255,255,255,0.15);}
+
+        /* MISC */
+        .empty-state{text-align:center;padding:40px 20px;color:#aaa;}
+        .empty-state i{font-size:50px;margin-bottom:12px;color:var(--p1);}
+        .empty-state p{font-size:14px;font-weight:600;}
+        .divider{height:1px;background:#F0F0F0;margin:4px 0 16px;}
+        .search-box{position:relative;margin-bottom:16px;}
+        .search-box input{width:100%;height:48px;border-radius:16px;border:2px solid #E0E0E0;padding:0 18px 0 44px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;background:white;}
+        .search-box input:focus{border-color:var(--p3);}
+        .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#aaa;}
+        .new-dot{width:8px;height:8px;background:var(--error);border-radius:50%;position:absolute;top:6px;right:6px;}
+        .alert-banner{background:#FFF3CD;border:1.5px solid #F59E0B;border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;color:#856404;font-weight:600;}
+        .history-card{background:white;border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 12px rgba(91,33,182,0.07);}
+        .history-card .hc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+        .history-card h4{font-size:14px;font-weight:700;color:#222;}
+        .history-card p{font-size:12px;color:#888;}
+    </style>
+</head>
+<body>
+<div id="app-frame">
+
+    <!-- LOADER -->
+    <div id="loader">
+        <i class="fa-solid fa-pills pill-icon"></i>
+        <p id="loader-text">LOADING</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         SCREEN 1: LOGIN
+    ═══════════════════════════════════════════ -->
+    <div id="screen-login" class="screen auth-bg hidden">
+        <div class="auth-logo">
+            <i class="fa-solid fa-pills"></i>
+            <span>MediFlow</span>
+        </div>
+        <div class="auth-card">
+            <h1>Pharmacist Portal</h1>
+            <p>Sign in to manage prescriptions</p>
+            <div class="lbl">Pharmacist ID / Email</div>
+            <input id="ph-id" class="auth-field" type="email" placeholder="pharmacist@hospital.com" autocomplete="off">
+            <div id="id-err" class="err-hint">Please enter a valid email</div>
+            <div class="lbl">Password</div>
+            <input id="ph-pass" class="auth-field" type="password" placeholder="••••••••">
+            <div id="pass-err" class="err-hint">Password must be at least 6 characters</div>
+            <button class="auth-btn" onclick="phLogin()"><i class="fa-solid fa-right-to-bracket"></i>&nbsp; Sign In</button>
+            <p style="text-align:center;margin-top:16px;font-size:12px;color:#aaa;">Demo: any email + any password (6+ chars)</p>
+        </div>
+        <div style="text-align:center;padding:16px 0 8px;">
+            <a href="index.html" style="font-size:13px;color:rgba(255,255,255,0.7);text-decoration:none;font-weight:600;">
+                <i class="fa-solid fa-arrow-left" style="margin-right:6px;"></i>Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         SCREEN 2: DASHBOARD
+    ═══════════════════════════════════════════ -->
+    <div id="screen-dash" class="screen hidden">
+        <div class="top-bar" style="padding-top:20px;">
+            <div class="avatar" id="ph-avatar">P</div>
+            <div style="flex:1;">
+                <div style="font-size:12px;opacity:0.7;">Good morning,</div>
+                <h2 id="ph-name" style="font-size:17px;margin:0;">Pharmacist</h2>
+            </div>
+            <button class="back-btn" onclick="showToast('Notifications coming soon')" style="position:relative;">
+                <i class="fa-solid fa-bell"></i>
+                <span class="new-dot" id="notif-dot" style="display:none;"></span>
+            </button>
+            <button class="back-btn" onclick="phLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+
+        <div id="tab-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+            <!-- QUEUE TAB -->
+            <div id="tab-queue" class="scroll-body" style="display:block;">
+                <div class="stat-row" style="margin-top:4px;">
+                    <div class="stat-card">
+                        <i class="fa-solid fa-clock"></i>
+                        <div class="stat-num" id="stat-pending">0</div>
+                        <div class="stat-lbl">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div class="stat-num" id="stat-dispensed">0</div>
+                        <div class="stat-lbl">Dispensed</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fa-solid fa-file-prescription"></i>
+                        <div class="stat-num" id="stat-total">0</div>
+                        <div class="stat-lbl">Total Rx</div>
+                    </div>
+                </div>
+
+                <div id="alert-new" class="alert-banner" style="display:none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>New prescriptions received from Doctor</span>
+                </div>
+
+                <div class="section-title">Prescription Queue</div>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search patient or Rx ID..." oninput="searchRx(this)">
+                </div>
+                <div id="rx-list">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- HISTORY TAB -->
+            <div id="tab-history" class="scroll-body" style="display:none;">
+                <div class="section-title" style="margin-top:4px;">Dispensed History</div>
+                <div id="history-list">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div id="tab-profile" class="scroll-body" style="display:none;">
+                <div class="detail-section" style="margin-top:4px;">
+                    <h3><i class="fa-solid fa-user-nurse"></i> Pharmacist Profile</h3>
+                    <div class="info-row"><span>Name</span><span id="prof-name">—</span></div>
+                    <div class="info-row"><span>Email</span><span id="prof-email">—</span></div>
+                    <div class="info-row"><span>Reg. No.</span><span>PH-2024-00001</span></div>
+                    <div class="info-row"><span>Pharmacy</span><span>MediFlow Pharmacy</span></div>
+                    <div class="info-row"><span>License</span><span>Valid until Dec 2025</span></div>
+                </div>
+                <button class="secondary-btn" onclick="phLogout()"><i class="fa-solid fa-right-from-bracket"></i>&nbsp; Sign Out</button>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-btn active" id="nav-queue" onclick="switchDashTab('tab-queue','nav-queue')">
+                <i class="fa-solid fa-list-check"></i><span>Queue</span>
+            </div>
+            <div class="nav-btn" id="nav-history" onclick="switchDashTab('tab-history','nav-history')">
+                <i class="fa-solid fa-clock-rotate-left"></i><span>History</span>
+            </div>
+            <div class="nav-btn" id="nav-profile" onclick="switchDashTab('tab-profile','nav-profile')">
+                <i class="fa-solid fa-user"></i><span>Profile</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         SCREEN 3: PRESCRIPTION DETAIL
+    ═══════════════════════════════════════════ -->
+    <div id="screen-detail" class="screen hidden">
+        <div class="top-bar" style="padding-top:20px;">
+            <button class="back-btn" onclick="goBack('screen-dash')"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2>Prescription Detail</h2>
+            <span class="status-badge" id="detail-status-badge" style="font-size:11px;">PENDING</span>
+        </div>
+
+        <div class="scroll-body" id="detail-body">
+
+            <!-- Rx ID + Patient Info -->
+            <div class="detail-section" style="background:linear-gradient(135deg,var(--p5),var(--p4));color:white;">
+                <h3 style="color:rgba(255,255,255,0.8);"><i class="fa-solid fa-file-prescription" style="color:var(--p1);"></i> Prescription</h3>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;" id="d-p-initial">P</div>
+                    <div>
+                        <div style="font-size:18px;font-weight:800;" id="d-p-name">Patient Name</div>
+                        <div style="font-size:13px;opacity:0.8;margin-top:2px;" id="d-p-meta">Age • Gender</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:11px;opacity:0.7;">Rx ID</div>
+                        <div style="font-size:12px;font-weight:700;" id="d-rx-id">—</div>
+                    </div>
+                    <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:11px;opacity:0.7;">Date</div>
+                        <div style="font-size:12px;font-weight:700;" id="d-date">—</div>
+                    </div>
+                    <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:11px;opacity:0.7;">Doctor</div>
+                        <div style="font-size:11px;font-weight:700;" id="d-doctor">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical Info -->
+            <div class="detail-section">
+                <h3><i class="fa-solid fa-notes-medical"></i> Clinical Details</h3>
+                <div class="info-row"><span>Diagnosis</span><span id="d-diag" style="text-align:right;max-width:60%;">—</span></div>
+                <div class="info-row"><span>Vitals</span><span id="d-vitals">—</span></div>
+                <div class="info-row" style="margin-bottom:0;"><span>Complaint</span><span id="d-complaint" style="text-align:right;max-width:60%;">—</span></div>
+            </div>
+
+            <!-- Medicines Checklist -->
+            <div class="detail-section">
+                <h3><i class="fa-solid fa-pills"></i> Medicines to Dispense</h3>
+                <div id="d-med-list"><!-- populated --></div>
+                <div style="margin-top:12px;padding:10px 12px;background:#F3F0FF;border-radius:10px;font-size:12px;color:var(--p4);font-weight:600;display:flex;align-items:center;gap:8px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    Check off each medicine as you pick it from the shelf
+                </div>
+            </div>
+
+            <!-- Doctor's Advice -->
+            <div class="detail-section">
+                <h3><i class="fa-solid fa-comment-medical"></i> Doctor's Advice to Patient</h3>
+                <p id="d-notes" style="font-size:13px;color:#555;line-height:1.6;">—</p>
+            </div>
+
+            <!-- Follow-up -->
+            <div style="background:#FFF8E1;border-radius:14px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+                <i class="fa-solid fa-calendar-check" style="color:#F59E0B;font-size:18px;"></i>
+                <span style="font-size:13px;font-weight:600;color:#555;">Follow-up: <strong id="d-followup" style="color:#333;">—</strong></span>
+            </div>
+
+            <div style="height:8px;"></div>
+        </div>
+
+        <div class="action-row">
+            <button class="secondary-btn" onclick="goBack('screen-dash')" style="flex:1;margin-top:0;height:56px;">Cancel</button>
+            <button class="primary-btn" id="dispense-btn" onclick="dispenseRx()" style="flex:2;">
+                <i class="fa-solid fa-check-circle"></i> Mark Dispensed
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+const STATUS_LABELS = {
+    'pending':    'Pending',
+    'sent':       'Sent',
+    'dispensed':  'Dispensed',
+    'verified':   'Verified',
+};
+function statusLabel(s) {
+    return STATUS_LABELS[s] || (s ? s.replace(/-/g, ' ') : 'Pending');
+}
+
+// ─────────────────────────────────────────────
+// DATA KEYS
+// ─────────────────────────────────────────────
+const RX_KEY  = 'mediflow_prescriptions';
+const PH_KEY  = 'mediflow_pharmacist';
+
+let currentPharmacist = null;
+let currentRx         = null;
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+window.onload = () => {
+    const saved = JSON.parse(localStorage.getItem(PH_KEY));
+    if (saved) {
+        currentPharmacist = saved;
+        applyPharmacistToUI();
+        loader(false);
+        showScreen('screen-dash');
+        refreshDash();
+    } else {
+        loader(false);
+        showScreen('screen-login');
+    }
+};
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+function phLogin() {
+    const email = document.getElementById('ph-id').value.trim();
+    const pass  = document.getElementById('ph-pass').value;
+    let ok = true;
+    if (!/\S+@\S+\.\S+/.test(email)) { showErr('id-err'); ok = false; }
+    if (pass.length < 6)              { showErr('pass-err'); ok = false; }
+    if (!ok) return;
+
+    loader(true, 'SIGNING IN...');
+    setTimeout(() => {
+        const name = email.split('@')[0].replace(/[.\-_]/g,' ')
+                         .replace(/\b\w/g, c => c.toUpperCase());
+        currentPharmacist = { name: name, email, reg: 'PH-2024-00001' };
+        localStorage.setItem(PH_KEY, JSON.stringify(currentPharmacist));
+        applyPharmacistToUI();
+        loader(false);
+        showScreen('screen-dash');
+        refreshDash();
+    }, 1200);
+}
+
+function phLogout() {
+    localStorage.removeItem(PH_KEY);
+    currentPharmacist = null;
+    loader(true, 'SIGNING OUT...');
+    setTimeout(() => { loader(false); showScreen('screen-login'); }, 800);
+}
+
+function applyPharmacistToUI() {
+    if (!currentPharmacist) return;
+    document.getElementById('ph-name').textContent    = currentPharmacist.name;
+    document.getElementById('ph-avatar').textContent  = currentPharmacist.name.charAt(0).toUpperCase();
+    document.getElementById('prof-name').textContent  = currentPharmacist.name;
+    document.getElementById('prof-email').textContent = currentPharmacist.email;
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+function refreshDash() {
+    const rxList = JSON.parse(localStorage.getItem(RX_KEY) || '[]');
+
+    const pending    = rxList.filter(r => r.status !== 'dispensed');
+    const dispensed  = rxList.filter(r => r.status === 'dispensed');
+    const newRx      = rxList.filter(r => r.sentToPharmacist && r.status === 'sent');
+
+    document.getElementById('stat-pending').textContent   = pending.length;
+    document.getElementById('stat-dispensed').textContent = dispensed.length;
+    document.getElementById('stat-total').textContent     = rxList.length;
+
+    // alert banner
+    const alertEl = document.getElementById('alert-new');
+    const notifDot = document.getElementById('notif-dot');
+    if (newRx.length > 0) {
+        alertEl.style.display = 'flex';
+        alertEl.querySelector('span').textContent = `${newRx.length} new prescription${newRx.length > 1 ? 's' : ''} received from Doctor`;
+        notifDot.style.display = 'block';
+    } else {
+        alertEl.style.display = 'none';
+        notifDot.style.display = 'none';
+    }
+
+    renderRxList(rxList.filter(r => r.status !== 'dispensed'));
+    renderHistory(rxList.filter(r => r.status === 'dispensed'));
+}
+
+function renderRxList(list) {
+    const el = document.getElementById('rx-list');
+    if (list.length === 0) {
+        el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-check"></i><p>No pending prescriptions</p></div>`;
+        return;
+    }
+    el.innerHTML = list.map(rx => `
+        <div class="rx-card" onclick="openDetail('${rx.id}')">
+            <div class="rx-card-top">
+                <div class="rx-avatar">${(rx.patientName||'?').charAt(0)}</div>
+                <div class="rx-info">
+                    <h4>${rx.patientName || 'Unknown Patient'}</h4>
+                    <p>${rx.date} &bull; ${rx.doctorName || 'Doctor'}</p>
+                </div>
+                <span class="status-badge status-${rx.status||'pending'}">${statusLabel(rx.status)}</span>
+            </div>
+            <div class="rx-meta">
+                <span class="rx-meta-item"><i class="fa-solid fa-file-prescription" style="margin-right:4px;"></i>${rx.id}</span>
+                <span class="rx-meta-item"><i class="fa-solid fa-pills" style="margin-right:4px;"></i>${(rx.medicines||[]).length} medicine${(rx.medicines||[]).length !== 1 ? 's' : ''}</span>
+                ${rx.diagnosis ? `<span class="rx-meta-item">${rx.diagnosis}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderHistory(list) {
+    const el = document.getElementById('history-list');
+    if (list.length === 0) {
+        el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-file-prescription"></i><p>No dispensed prescriptions yet</p></div>`;
+        return;
+    }
+    el.innerHTML = [...list].reverse().map(rx => `
+        <div class="history-card" onclick="openDetail('${rx.id}')">
+            <div class="hc-top">
+                <h4>${rx.patientName}</h4>
+                <span class="status-badge status-dispensed">Dispensed</span>
+            </div>
+            <p>${rx.diagnosis || 'No diagnosis'} &bull; ${(rx.medicines||[]).length} medicines</p>
+            <p style="font-size:11px;color:var(--p4);margin-top:6px;font-weight:700;">ID: ${rx.id} &bull; ${rx.date}</p>
+        </div>
+    `).join('');
+}
+
+function searchRx(el) {
+    const q = el.value.toLowerCase();
+    const rxList = JSON.parse(localStorage.getItem(RX_KEY) || '[]')
+                    .filter(r => r.status !== 'dispensed');
+    renderRxList(rxList.filter(r =>
+        (r.patientName||'').toLowerCase().includes(q) ||
+        (r.id||'').toLowerCase().includes(q) ||
+        (r.diagnosis||'').toLowerCase().includes(q)
+    ));
+}
+
+function switchDashTab(tabId, navId) {
+    document.querySelectorAll('#tab-content > div').forEach(t => t.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(navId).classList.add('active');
+    if (tabId === 'tab-history') refreshDash();
+}
+
+// ─────────────────────────────────────────────
+// PRESCRIPTION DETAIL
+// ─────────────────────────────────────────────
+function openDetail(rxId) {
+    const rxList = JSON.parse(localStorage.getItem(RX_KEY) || '[]');
+    currentRx = rxList.find(r => r.id === rxId);
+    if (!currentRx) return;
+
+    document.getElementById('d-p-initial').textContent = (currentRx.patientName || '?').charAt(0);
+    document.getElementById('d-p-name').textContent    = currentRx.patientName || '—';
+    document.getElementById('d-p-meta').textContent    = `${currentRx.patientAge || '—'} yrs • ${currentRx.patientGender || '—'}`;
+    document.getElementById('d-rx-id').textContent     = currentRx.id;
+    document.getElementById('d-date').textContent      = currentRx.date || '—';
+    document.getElementById('d-doctor').textContent    = (currentRx.doctorName || '—').replace('Dr. ', '');
+    document.getElementById('d-diag').textContent      = currentRx.diagnosis || '—';
+    document.getElementById('d-vitals').textContent    = currentRx.vitals || '—';
+    document.getElementById('d-complaint').textContent = currentRx.complaint || '—';
+    document.getElementById('d-notes').textContent     = currentRx.notes || 'No additional advice';
+    document.getElementById('d-followup').textContent  = currentRx.followup || '—';
+
+    // Status badge
+    const badge = document.getElementById('detail-status-badge');
+    badge.className = `status-badge status-${currentRx.status || 'pending'}`;
+    badge.textContent = statusLabel(currentRx.status).toUpperCase();
+
+    // Medicines checklist
+    const medEl = document.getElementById('d-med-list');
+    medEl.innerHTML = (currentRx.medicines || []).map((m, i) => `
+        <div class="med-item">
+            <div class="med-num">${i + 1}</div>
+            <div class="med-detail" style="flex:1;">
+                <h4>${m.name}</h4>
+                <p>${[m.dose, m.freq, m.timing, m.duration].filter(Boolean).join(' • ')}${m.instructions ? '<br><em>' + m.instructions + '</em>' : ''}</p>
+            </div>
+            <div class="med-check">
+                <input type="checkbox" id="med-chk-${i}" onchange="updateDispenseBtn()">
+            </div>
+        </div>
+    `).join('');
+
+    // Dispense button state
+    const btn = document.getElementById('dispense-btn');
+    if (currentRx.status === 'dispensed') {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Already Dispensed';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Mark Dispensed';
+    }
+
+    showScreen('screen-detail');
+    document.getElementById('detail-body').scrollTop = 0;
+}
+
+function updateDispenseBtn() {
+    const checkboxes = document.querySelectorAll('#d-med-list input[type="checkbox"]');
+    const allChecked = checkboxes.length > 0 && [...checkboxes].every(c => c.checked);
+    const btn = document.getElementById('dispense-btn');
+    if (currentRx && currentRx.status !== 'dispensed') {
+        btn.style.opacity = allChecked ? '1' : '0.6';
+    }
+}
+
+function dispenseRx() {
+    if (!currentRx || currentRx.status === 'dispensed') return;
+
+    const checkboxes = document.querySelectorAll('#d-med-list input[type="checkbox"]');
+    if (checkboxes.length > 0 && ![...checkboxes].every(c => c.checked)) {
+        showToast('⚠️ Please check off all medicines before dispensing');
+        return;
+    }
+
+    loader(true, 'DISPENSING...');
+    setTimeout(() => {
+        currentRx.status = 'dispensed';
+        currentRx.dispensedAt = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+        currentRx.dispensedBy = currentPharmacist ? currentPharmacist.name : 'Pharmacist';
+
+        // Save back
+        const rxList = JSON.parse(localStorage.getItem(RX_KEY) || '[]');
+        const updated = rxList.map(r => r.id === currentRx.id ? currentRx : r);
+        localStorage.setItem(RX_KEY, JSON.stringify(updated));
+
+        // Update UI
+        const badge = document.getElementById('detail-status-badge');
+        badge.className = 'status-badge status-dispensed';
+        badge.textContent = 'DISPENSED';
+        const btn = document.getElementById('dispense-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Dispensed';
+
+        refreshDash();
+        loader(false);
+        showToast('✅ Prescription dispensed successfully!');
+    }, 1200);
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION HELPERS
+// ─────────────────────────────────────────────
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function goBack(screenId) {
+    showScreen(screenId);
+    if (screenId === 'screen-dash') refreshDash();
+}
+
+function showErr(id) {
+    document.getElementById(id).classList.add('show');
+    setTimeout(() => document.getElementById(id).classList.remove('show'), 3000);
+}
+
+function loader(show, text = 'LOADING') {
+    const l = document.getElementById('loader');
+    document.getElementById('loader-text').textContent = text;
+    if (show) { l.classList.remove('hidden'); }
+    else       { l.classList.add('hidden'); }
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
