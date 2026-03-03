@@ -263,6 +263,11 @@
                      <div class="icon-orb orb-1"><i class="fa-solid fa-user-shield"></i></div>
                      <div style="margin-left:15px;"><h3 id="db-name-disp" style="margin:0; font-size:16px;">User</h3><p id="db-info-disp" style="margin:2px 0 0; font-size:12px; opacity:0.6;">Details</p></div>
                 </div>
+                <div class="glass-card wide" onclick="showPrescriptions()" style="cursor:pointer;">
+                    <div class="icon-orb orb-2"><i class="fa-solid fa-file-prescription"></i></div>
+                    <div style="margin-left:15px;flex:1;"><h3 style="margin:0; font-size:16px;">My Prescriptions</h3><p style="margin:2px 0 0; font-size:12px; opacity:0.6;">View doctor prescriptions</p></div>
+                    <span id="rx-count-badge" style="background:var(--error);color:white;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">0</span>
+                </div>
                 <div class="glass-card wide" onclick="dbLogout()" style="cursor:pointer; border:1px solid rgba(230,57,70,0.3);">
                     <div class="icon-orb" style="background:#FFE5E5; color:var(--error);"><i class="fa-solid fa-power-off"></i></div>
                     <div style="margin-left:15px;"><h3 style="color:var(--error); margin:0; font-size:16px;">Logout</h3><p style="margin:2px 0 0; font-size:12px; opacity:0.6;">Securely end session</p></div>
@@ -300,6 +305,17 @@
             </div>
             
             <button class="pay-btn" onclick="openPayment()">PROCEED TO PAY</button>
+        </div>
+    </div>
+
+    <!-- PRESCRIPTIONS SCREEN -->
+    <div id="screen-prescriptions" class="screen hidden" style="background:#F0FFFE;">
+        <div style="background:var(--c5);padding:20px 20px 14px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+            <i class="fa-solid fa-arrow-left" onclick="closePrescriptions()" style="font-size:20px;color:white;cursor:pointer;"></i>
+            <h2 style="color:white;font-size:18px;font-weight:800;margin:0;">My Prescriptions</h2>
+        </div>
+        <div id="rx-list-body" style="flex:1;overflow-y:auto;padding:20px;">
+            <p style="text-align:center;color:#aaa;padding:40px 0;" id="rx-empty-msg">No prescriptions yet.<br>Book a consultation to get started.</p>
         </div>
     </div>
 
@@ -440,7 +456,23 @@
 
     function openConsultation() { 
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-        document.getElementById('screen-consult').classList.remove('hidden'); 
+        document.getElementById('screen-consult').classList.remove('hidden');
+        registerPatientInQueue();
+    }
+    function registerPatientInQueue() {
+        const user = JSON.parse(localStorage.getItem('mediflow_user'));
+        if (!user) return;
+        const patients = JSON.parse(localStorage.getItem('mediflow_patients') || '[]');
+        const already = patients.find(p => p.phone === user.phone);
+        if (already) return;
+        const newP = {
+            id: 'P' + Date.now().toString().slice(-6),
+            name: user.name, age: user.age, gender: user.gender,
+            phone: user.phone, mode: 'Online', status: 'waiting',
+            consultDate: new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+        };
+        patients.push(newP);
+        localStorage.setItem('mediflow_patients', JSON.stringify(patients));
     }
     
     function closeConsultation() { 
@@ -511,6 +543,41 @@
 
     function clearErr(errId) { document.getElementById(errId).style.display = 'none'; }
 
+    function showPrescriptions() {
+        const user = JSON.parse(localStorage.getItem('mediflow_user'));
+        if (!user) return;
+        const rxAll = JSON.parse(localStorage.getItem('mediflow_prescriptions') || '[]');
+        const myRx = rxAll.filter(r => r.sentToPatient || (r.patientName && user.name && r.patientName.toLowerCase() === user.name.toLowerCase()));
+        const body = document.getElementById('rx-list-body');
+        const empty = document.getElementById('rx-empty-msg');
+        if (myRx.length === 0) {
+            body.innerHTML = '<p style="text-align:center;color:#aaa;padding:40px 0;">No prescriptions yet.<br>Book a consultation to get started.</p>';
+        } else {
+            body.innerHTML = myRx.reverse().map(rx => `
+                <div style="background:white;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 4px 15px rgba(11,117,123,0.08);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:12px;font-weight:800;color:var(--c4);font-family:monospace;">${rx.id}</span>
+                        <span style="font-size:11px;color:#aaa;">${rx.date}</span>
+                    </div>
+                    <div style="font-size:15px;font-weight:700;color:#222;margin-bottom:4px;">${rx.diagnosis || 'Prescription'}</div>
+                    <div style="font-size:12px;color:#888;margin-bottom:10px;">By ${rx.doctorName || 'Doctor'}</div>
+                    ${(rx.medicines||[]).map(m => `
+                        <div style="background:#F8FEFD;border:1.5px solid #A5E6E2;border-radius:10px;padding:10px;margin-bottom:6px;">
+                            <div style="font-size:13px;font-weight:700;color:#222;">${m.name}</div>
+                            <div style="font-size:11px;color:#666;">${[m.dose,m.freq,m.timing,m.duration].filter(Boolean).join(' • ')}</div>
+                        </div>
+                    `).join('')}
+                    ${rx.notes ? `<div style="margin-top:8px;font-size:12px;color:#555;background:#FFFDE7;padding:8px;border-radius:8px;"><strong>Advice:</strong> ${rx.notes}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById('screen-prescriptions').classList.remove('hidden');
+    }
+    function closePrescriptions() {
+        document.getElementById('screen-prescriptions').classList.add('hidden');
+        document.getElementById('screen-dash').classList.remove('hidden');
+    }
     function dbLogout() {
         if(confirm("Logout and clear data?")) {
             localStorage.removeItem('mediflow_user');
